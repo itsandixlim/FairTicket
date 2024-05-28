@@ -6,8 +6,7 @@ async function deployTicketContract() {
   const TicketContract = await ethers.getContractFactory("Ticket");
   const ticketContract = await TicketContract.deploy(10, 5, 2); // creationFeePercentage, purchaseFeePercentage, resellingFeePercentage
 
-  await ticketContract.deployed();
-
+  await ticketContract.waitForDeployment();
   console.log("Ticket contract deployed to:", ticketContract.address);
   console.log("Owner:", owner.address);
 }

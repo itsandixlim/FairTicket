@@ -1,8 +1,13 @@
-import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
+require("@nomicfoundation/hardhat-toolbox");
+require('dotenv').config();
 
-const config: HardhatUserConfig = {
+/** @type import('hardhat/config').HardhatUserConfig */
+module.exports = {
   solidity: "0.8.24",
+  networks: {
+    sepolia: {
+      url: process.env.VITE_JSON_RPC_URL,
+      accounts: [process.env.VITE_PRIVATE_KEY],
+    },
+  },
 };
-
-export default config;
