@@ -12,8 +12,10 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
-    contract Ticket is ERC721URIStorage, Ownable, ERC721Burnable {
+    contract Ticket is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private tokenIdCounter;
 
@@ -27,15 +29,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
         uint256 ticketHoldDate;
         address creator;
         bool ticketSold;
+        bool isResellable;
     }
 
     struct PurchaseInfo { // important for reselling
-        address buyer;
         uint256 ticketsBought;
+        uint256 ticketsToResell;
         uint256 totalPrice;
         uint256 ticketId;
         uint256 purchaseId;
         uint256 purchaseTimestamp;
+        address buyer;
     }
 
     uint256 public creationFeePercentage;  // Fee percentage for creating a ticket
@@ -46,6 +50,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
     mapping(address => uint256[]) public userTickets;
     mapping(uint256 => PurchaseInfo[]) public ticketPurchases;  // Mapping to store purchase information for each ticket
 
+    
     event TicketCreated(
         uint256 indexed tokenId,
         uint256 totalTickets,
@@ -103,6 +108,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
             ticketsSold: 0,
             ticketPrice: _ticketPrice,
             ticketStartDate: ticketStartDate,
+            ticketHoldDate: 0,
             ticketEndDate: _ticketEndDate,
             creator: msg.sender,
             ticketSold: false,
@@ -122,6 +128,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
     function purchaseTicket(uint256 tokenID, uint256 ticketsToBuy) external payable {
         TicketInfo storage ticket = tickets[tokenID];
         require(!ticket.ticketSold, "Ticket has already been sold");
+        require(ticketsToBuy < 3);
         require(ticketsToBuy > 0 && ticketsToBuy <= ticket.totalTickets - ticket.ticketsSold, "Invalid number of tickets");
 
         uint256 totalPrice = ticket.ticketPrice * ticketsToBuy;
@@ -150,6 +157,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
             ticketPurchases[newTokenId].push(PurchaseInfo({
                 buyer: msg.sender,
                 ticketsBought: 1,
+                ticketsToResell: 1,
                 totalPrice: ticket.ticketPrice,
                 ticketId:tokenID,
                 purchaseId:newTokenId,
@@ -167,30 +175,51 @@ import "@openzeppelin/contracts/access/Ownable.sol";
         }
     }
 
+    
     function resellTicket(uint256 tokenId, uint256 ticketsToSell) external {
-    tickets[tokenId].ticketHoldDate = block.timestamp;
-        
-    require(ticketPurchases[tokenId].buyer == msg.sender, "Not the owner of the ticket");
+    TicketInfo storage ticket = tickets[tokenId];
     require(ticketsToSell > 0, "Invalid number of tickets");
-    require(tickets[tokenId].ticketsSold >= ticketsToSell, "Not enough tickets sold");
-    require(tickets[tokenId].ticketHoldDate >= ticketEndDate, _burn(tokenId));
+    require(ticketsToSell <= ticket.ticketsSold, "Not enough tickets sold");
+    require(ticket.ticketHoldDate >= ticket.ticketEndDate, "Ticket cannot be resold yet");
 
-    // Store the new buyer information for the ticket
-    ticketPurchases[tokenId].ticketsToResell = ticketsToSell;
+    uint256 ownedTickets = 0;
+    uint256 resoldTickets = 0;
+    for (uint256 i = 0; i < ticketPurchases[tokenId].length; i++) {
+        if (ticketPurchases[tokenId][i].buyer == msg.sender) {
+            ownedTickets += ticketPurchases[tokenId][i].ticketsBought;
+            resoldTickets += ticketPurchases[tokenId][i].ticketsToResell;
+        }
+    }
+    require(ownedTickets >= ticketsToSell, "Not enough tickets owned");
+    require(resoldTickets + ticketsToSell <= ownedTickets, "Cannot resell more tickets than owned");
 
-    emit TicketResell(tokenId, msg.sender, ticketsToSell);
+    // Update the ticketsToResell field for each struct that matches the buyer address
+    for (uint256 i = 0; i < ticketPurchases[tokenId].length; i++) {
+        if (ticketPurchases[tokenId][i].buyer == msg.sender) {
+            ticketPurchases[tokenId][i].ticketsToResell += ticketsToSell;
+            break;
+        }
     }
 
-    function reBuyTicket(uint256 tokenId, uint256 ticketsToBuy) external payable {
-    require(ticketsToBuy > 0, "Invalid number of tickets");
-    require(tickets[tokenId].ticketsSold >= ticketsToBuy, "Not enough tickets available for resale");
+    emit TicketResell(tokenId, msg.sender, ticketsToSell);
+}
 
-    // Transfer the ticket to the new buyer
-    _transfer(ticketPurchases[tokenId].buyer, msg.sender, tokenId);
+    function reBuyTicket(uint256 tokenId, uint256 buyticketId) external payable {
+    require(tickets[tokenId].ticketsSold >= 1, "Not enough tickets available for resale");
 
     // Transfer the ticket price to the original buyer
     uint256 ticketPrice = tickets[tokenId].ticketPrice + (tickets[tokenId].ticketPrice * resellingFeePercentage);
+    payable(msg.sender).transfer(ticketPrice);
+
+    // Transfer the ticket to the new buyer
+    for(uint256 i = 0; i < ticketPurchases[tokenId].length; i++) {
+        if (ticketPurchases[tokenId][i].ticketId == buyticketId) {
+            _transfer(ticketPurchases[tokenId][i].buyer, msg.sender, buyticketId);
+             emit TicketResold(tokenId, ticketPurchases[tokenId][i].buyer, msg.sender, buyticketId);
+            break;
+        }
     }
+}
 
     function getUserTickets(address user) external view returns (uint256[] memory) {
         return userTickets[user];
