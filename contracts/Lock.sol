@@ -248,4 +248,15 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
         return purchaseFeePercentage;
     }
     
+    function getAllTickets() external view returns (TicketInfo[] memory) {
+    uint256 ticketCount = tokenIdCounter.current();
+    TicketInfo[] memory allTickets = new TicketInfo[](ticketCount);
+
+    for (uint256 i = 0; i < ticketCount; i++) {
+        allTickets[i] = tickets[i];
+    }
+
+    return allTickets;
+}
+
     }                                                                                                                                                                                                                                                                                                                                                         
