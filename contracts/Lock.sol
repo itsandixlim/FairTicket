@@ -117,7 +117,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
         // Calculate creation fee and transfer to contract owner
         uint256 creationFee = creationFeePercentage;
-        require(msg.value == creationFee, "Incorrect creation fee sent");
 
         // Transfer the creation fee to the contract owner
         payable(owner()).transfer(creationFee);
