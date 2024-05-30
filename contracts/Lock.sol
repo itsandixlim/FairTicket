@@ -173,7 +173,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
         }
     }
 
-    
     function resellTicket(uint256 tokenId, uint256 ticketsToSell) external {
     TicketInfo storage ticket = tickets[tokenId];
     require(ticketsToSell > 0, "Invalid number of tickets");
@@ -229,6 +228,10 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
     function getPurchaseInfo(uint256 tokenID) external view returns (PurchaseInfo[] memory) {
         return ticketPurchases[tokenID];
+    }
+
+    function burn(uint256 tokenID) external onlyOwner {
+        _burn(tokenID);
     }
 
     function updateCreationFeePercentage(uint256 _creationFeePercentage) external onlyOwner {
