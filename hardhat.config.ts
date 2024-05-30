@@ -10,4 +10,8 @@ module.exports = {
       accounts: [process.env.VITE_PRIVATE_KEY],
     },
   },
+
+  sourcify: {
+    enabled: true
+  }
 };

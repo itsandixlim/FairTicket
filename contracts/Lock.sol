@@ -18,6 +18,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
     contract Ticket is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
     Counters.Counter private tokenIdCounter;
+    Counters.Counter private ticketIdCounter;
 
     struct TicketInfo {
         uint256 tokenId;
@@ -144,7 +145,8 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
         // Mint tickets and record purchases
         for (uint256 i = 0; i < ticketsToBuy; i++) {
-            uint256 newTokenId = tokenIdCounter.current();
+            uint256 newTokenId = ticketIdCounter.current();
+            ticketIdCounter.increment();
             _safeMint(msg.sender, newTokenId);
             _setTokenURI(newTokenId, tokenURI(tokenID));
 
