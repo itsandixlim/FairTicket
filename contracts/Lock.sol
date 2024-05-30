@@ -145,7 +145,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
         // Mint tickets and record purchases
         for (uint256 i = 0; i < ticketsToBuy; i++) {
             uint256 newTokenId = tokenIdCounter.current();
-            tokenIdCounter.increment();
             _safeMint(msg.sender, newTokenId);
             _setTokenURI(newTokenId, tokenURI(tokenID));
 
