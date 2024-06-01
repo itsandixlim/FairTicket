@@ -19,6 +19,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
     using Counters for Counters.Counter;
     Counters.Counter private tokenIdCounter;
     Counters.Counter private ticketIdCounter;
+    Counters.Counter private EventIdCounter;
 
     struct TicketInfo {
         uint256 tokenId;
@@ -31,6 +32,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
         address creator;
         bool ticketSold;
         bool isResellable;
+        uint256 eventId;
     }
 
     struct PurchaseInfo { // important for reselling
@@ -95,8 +97,11 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
         require(_ticketPrice > 0, "Ticket price must be greater than 0");
         require(_ticketEndDate > block.timestamp, "Ticket end date must be in the future");
 
-        uint256 currentID = ticketIdCounter.current();
-        ticketIdCounter.increment();
+        uint256 currentID = tokenIdCounter.current();
+        tokenIdCounter.increment();
+
+        uint256 currentEventId = EventIdCounter.current();
+        EventIdCounter.increment();
 
         _safeMint(msg.sender, currentID);
         _setTokenURI(currentID, tokenURI);
@@ -113,7 +118,8 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
             ticketEndDate: _ticketEndDate,
             creator: msg.sender,
             ticketSold: false,
-            isResellable: false
+            isResellable: false,
+            eventId: currentEventId
         });
 
         // Calculate creation fee and transfer to contract owner
@@ -159,8 +165,8 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
                 ticketsBought: 1,
                 ticketsToResell: 1,
                 totalPrice: ticket.ticketPrice,
-                ticketId:tokenID,
-                purchaseId:newTokenId,
+                ticketId: newTokenId,
+                purchaseId: newTokenId,
                 purchaseTimestamp: block.timestamp
             }));
 
