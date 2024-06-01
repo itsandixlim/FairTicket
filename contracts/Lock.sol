@@ -95,8 +95,8 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
         require(_ticketPrice > 0, "Ticket price must be greater than 0");
         require(_ticketEndDate > block.timestamp, "Ticket end date must be in the future");
 
-        uint256 currentID = tokenIdCounter.current();
-        tokenIdCounter.increment();
+        uint256 currentID = ticketIdCounter.current();
+        ticketIdCounter.increment();
 
         _safeMint(msg.sender, currentID);
         _setTokenURI(currentID, tokenURI);
