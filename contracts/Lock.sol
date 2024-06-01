@@ -99,7 +99,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
         // Transaction ID
         uint256 tokenId = tokenIdCounter.current();
-        ticketIdCounter.increment();
+        tokenIdCounter.increment();
 
         // Event ID
         uint256 eventId = eventIdCounter.current();
