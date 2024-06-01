@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
     using Counters for Counters.Counter;
     Counters.Counter private tokenIdCounter;
     Counters.Counter private ticketIdCounter;
-    Counters.Counter private EventIdCounter;
+    Counters.Counter private eventIdCounter;
 
     struct TicketInfo {
         uint256 tokenId;
@@ -97,19 +97,24 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
         require(_ticketPrice > 0, "Ticket price must be greater than 0");
         require(_ticketEndDate > block.timestamp, "Ticket end date must be in the future");
 
-        uint256 currentID = ticketIdCounter.current();
+        // Transaction ID
+        uint256 tokenId = tokenIdCounter.current();
         ticketIdCounter.increment();
 
-        uint256 currentEventId = EventIdCounter.current();
-        EventIdCounter.increment();
+        // Event ID
+        uint256 eventId = eventIdCounter.current();
+        eventIdCounter.increment();
 
-        _safeMint(msg.sender, currentID);
-        _setTokenURI(currentID, tokenURI);
+        _safeMint(msg.sender, tokenId);
+        // idk if its safe to use eventId here instead
+        _setTokenURI(tokenId, tokenURI);
 
         uint256 ticketStartDate = block.timestamp;
 
-        tickets[currentID] = TicketInfo({
-            tokenId: currentID,
+        tickets[eventId] = TicketInfo({
+            // Switched these around since I'm assuming tokenId is what's displayed
+            // tokenId => event index
+            tokenId: eventId,
             totalTickets: _totalTickets,
             ticketsSold: 0,
             ticketPrice: _ticketPrice,
@@ -119,7 +124,8 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
             creator: msg.sender,
             ticketSold: false,
             isResellable: false,
-            eventId: currentEventId
+            // eventId => transaction #
+            eventId: tokenId
         });
 
         // Calculate creation fee and transfer to contract owner
@@ -128,11 +134,11 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
         // Transfer the creation fee to the contract owner
         payable(owner()).transfer(creationFee);
 
-        emit TicketCreated(currentID, _totalTickets, _ticketPrice, ticketStartDate, _ticketEndDate);
+        emit TicketCreated(eventId, _totalTickets, _ticketPrice, ticketStartDate, _ticketEndDate);
     }
 
-    function purchaseTicket(uint256 tokenID, uint256 ticketsToBuy) external payable {
-        TicketInfo storage ticket = tickets[tokenID];
+    function purchaseTicket(uint256 tokenId, uint256 ticketsToBuy) external payable {
+        TicketInfo storage ticket = tickets[tokenId];
         require(!ticket.ticketSold, "Ticket has already been sold");
         require(ticketsToBuy < 3);
         require(ticketsToBuy > 0 && ticketsToBuy <= ticket.totalTickets - ticket.ticketsSold, "Invalid number of tickets");
@@ -151,28 +157,36 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
         // Mint tickets and record purchases
         for (uint256 i = 0; i < ticketsToBuy; i++) {
-            uint256 newTokenId = ticketIdCounter.current();
-            ticketIdCounter.increment();
+            // Update the transaction Id
+            uint256 newTokenId = tokenIdCounter.current();
+            tokenIdCounter.increment();
+
             _safeMint(msg.sender, newTokenId);
-            _setTokenURI(newTokenId, tokenURI(tokenID));
+            _setTokenURI(newTokenId, tokenURI(tokenId));
 
             // Store the purchased ticket for the user
-            userTickets[msg.sender].push(newTokenId);
+            // This is the event index Id
+            userTickets[msg.sender].push(tokenId);
+
+            uint256 ticketId = ticketIdCounter.current();
+            ticketIdCounter.increment();
 
             // Store the purchase information for the ticket
-            ticketPurchases[newTokenId].push(PurchaseInfo({
+            ticketPurchases[ticketId].push(PurchaseInfo({
                 buyer: msg.sender,
                 ticketsBought: 1,
                 ticketsToResell: 1,
                 totalPrice: ticket.ticketPrice,
-                ticketId: newTokenId,
-                purchaseId: newTokenId,
+                // I assume this is for the eventId
+                ticketId: tokenId,
+                // and this is to differentiate 2 tickets from the same event
+                purchaseId: ticketId,
                 purchaseTimestamp: block.timestamp
             }));
 
             ticket.ticketsSold++;
 
-            emit TicketPurchased(newTokenId, msg.sender, ticketsToBuy);
+            emit TicketPurchased(tokenId, msg.sender, ticketsToBuy);
         }
 
         // Mark the ticket as sold when all tickets are sold
